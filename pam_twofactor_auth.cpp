@@ -17,7 +17,8 @@ typedef std::map<std::string, std::string> U2SN_MAP_TYPE;
 bool isThereDeviceWithSerial(std::string const& sn, std::string& dev) {
     // TODO: implement this function
 
-    return false;
+    dev = "/dev/sda";
+    return true;
 }
 
 bool loadUserToSNMap(U2SN_MAP_TYPE& u2sn) {
@@ -36,6 +37,41 @@ bool loadUserToSNMap(U2SN_MAP_TYPE& u2sn) {
 void printErrorToCErrAndPamSyslog(pam_handle_t* pamh, std::string const& errMsg) {
     std::cerr << "pam_twofactor_auth: " << errMsg << std::endl;
     pam_syslog(pamh, LOG_ERR, "%s", errMsg.c_str());
+}
+
+bool askForPassword(pam_handle_t* pamh, std::string& password) {
+    pam_conv* conv;
+
+    int res = pam_get_item(pamh, PAM_CONV, (const void**)&conv);
+    if (res != PAM_SUCCESS) {
+        printErrorToCErrAndPamSyslog(pamh, std::string("pam_get_item() failed: ") + pam_strerror(pamh, res));
+        return false;
+    }
+    if (conv == 0 || conv->conv == 0) {
+        printErrorToCErrAndPamSyslog(pamh, "'conv' or 'conv->conv' is zero-pointer");
+        return false;
+    }
+
+    pam_response* resp;
+    pam_message* msg = new pam_message[1];
+    msg[0].msg_style = PAM_PROMPT_ECHO_OFF;
+    msg[0].msg = "Password for 'ptfa.key': ";
+
+    res = conv->conv(1, (const pam_message**)&msg, &resp, conv->appdata_ptr);
+    delete[] msg;
+    if (res != PAM_SUCCESS) {
+        printErrorToCErrAndPamSyslog(pamh, std::string("conv->conv failed: ") + pam_strerror(pamh, res));
+        return false;
+    }
+    if (resp == 0 || resp[0].resp == 0) {
+        printErrorToCErrAndPamSyslog(pamh, "'resp' or 'resp[0].resp' is zero-pointer");
+        return false;
+    }
+
+    password = resp[0].resp;
+    free(&resp[0]);
+
+    return true;
 }
 
 int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** argv) {
@@ -127,13 +163,11 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
                 // TODO: read the key file
 
                 keyFileFound = true;
-            }
-            system("umount /tmp/ptfa_temporary_mount_point");
-            if (keyFileFound) {
                 break;
             }
         }
 
+        system("umount /tmp/ptfa_temporary_mount_point 2> /dev/null");
         system("rm -rf /tmp/ptfa_temporary_mount_point");
     }
 
@@ -142,14 +176,24 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         return PAM_CRED_INSUFFICIENT;
     }
 
+    std::string password;
+    if (!askForPassword(pamh, password)) {
+        return PAM_AUTHINFO_UNAVAIL;
+    }
+
     /**
       TODO:
-       - get user's password (or ask for it if it is not saved);
        - decrypt key using password;
        - if decryption in previous step fails, than ask for password again until decryption is done successfully or number of tries is exceeded;
-       - set PAM's password value to decrypted key's value;
-       - return PAM_SUCCESS.
      */
+
+    // Temporaty line for testing
+    std::string decryptedKey = password;
+
+    res = pam_set_item(pamh, PAM_AUTHTOK, decryptedKey.c_str());
+    if (res != PAM_SUCCESS) {
+        printErrorToCErrAndPamSyslog(pamh, "Failed to set auth token to decrypted key's value");
+    }
 
     return PAM_SUCCESS;
 }
