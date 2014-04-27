@@ -34,9 +34,7 @@ void printErrorToCErrAndPamSyslog(pam_handle_t* pamh, std::string const& errMsg)
 }
 
 int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** argv) {
-    //return PAM_SUCCESS;
-
-    // TODO: maybe wait for any UDB device to be connected here?
+    return PAM_SUCCESS;
 
     const char* user;
     int res = pam_get_user(pamh, &user, 0);
@@ -64,9 +62,18 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         return PAM_CRED_INSUFFICIENT;
     }
 
-    // TODO: everything else
-
-    //pam_get_authtok()
+    /**
+      TODO:
+       - get user's password (or ask for it if it is not saved);
+       - get all partitions' names of 'dev';
+       - check which of them are mounted
+       - check for file 'ptfa.key' on all mounted partitions, if exists on any, than skip next step;
+       - mount to /tmp/... all other partitions and check for file 'ptfa.key' on them; unmount them;
+       - if 'ptfa.key' was found anywhere, than decrypt it using password;
+       - if decryption in previous step fails, than ask for password again until decryption is done successfully or number of tries is exceeded;
+       - set PAM's password value to decrypted key's value;
+       - return PAM_SUCCESS.
+     */
 
     return PAM_SUCCESS;
 }
