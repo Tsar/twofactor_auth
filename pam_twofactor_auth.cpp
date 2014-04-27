@@ -14,11 +14,35 @@
 
 typedef std::map<std::string, std::string> U2SN_MAP_TYPE;
 
-bool isThereDeviceWithSerial(std::string const& sn, std::string& dev) {
-    // TODO: implement this function
-
-    dev = "/dev/sda";
+bool startsWith(const std::string& str, const std::string& tmpl) {
+    for (size_t i = 0; i < tmpl.length(); ++i) {
+        if (i >= str.length() || str[i] != tmpl[i]) {
+            return false;
+        }
+    }
     return true;
+}
+
+std::string getDeviceBySerialNumber(std::string const& sn) {
+    std::string path("/dev/disk/by-id");
+    DIR* dirp = opendir(path.c_str());
+    dirent* dp;
+    std::string ans = "";
+    while ((dp = readdir(dirp)) != NULL) {
+        std::string str(dp->d_name);
+        if (startsWith(str, "usb") && str.find(sn) != std::string::npos) {
+            char buf[256];
+            int len = readlink((path + "/" + str).c_str(), buf, 256);
+            buf[len] = 0;
+            realpath((path + "/" + buf).c_str(), buf);
+            ans = std::string(buf);
+            if (!(ans[ans.length() - 1] >= '0' && ans[ans.length() - 1] <= '9')) {
+                break;
+            }
+        }
+    }
+    closedir(dirp);
+    return ans;
 }
 
 bool loadUserToSNMap(U2SN_MAP_TYPE& u2sn) {
@@ -97,8 +121,8 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
     }
 
     std::string sn = it->second;
-    std::string dev;
-    if (!isThereDeviceWithSerial(sn, dev)) {
+    std::string dev = getDeviceBySerialNumberSerial(sn);
+    if (dev.length() == 0) {
         printErrorToCErrAndPamSyslog(pamh, "No device with serial number '" + sn + "' is connected");
         return PAM_CRED_INSUFFICIENT;
     }
