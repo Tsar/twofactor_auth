@@ -1,12 +1,12 @@
 cmake_minimum_required (VERSION 2.6)
-project (twofactor_auth)
+project (pam_twofactor_auth)
 
 set(sources
-twofactor_auth.cpp
+pam_twofactor_auth.cpp
 )
 
 set(headers
-twofactor_auth.h
+pam_twofactor_auth.h
 )
 
-add_library(twofactor_auth SHARED ${sources} ${headers})
+add_library(pam_twofactor_auth SHARED ${sources} ${headers})
