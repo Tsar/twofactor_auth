@@ -3,11 +3,16 @@
 #include <syslog.h>
 #include <security/pam_ext.h>
 
+#include <stdlib.h>
+#include <dirent.h>
 #include <iostream>
 #include <fstream>
-#include <boost/unordered_map.hpp>
+#include <sstream>
+#include <string>
+#include <set>
+#include <map>
 
-typedef boost::unordered_map<std::string, std::string> U2SN_MAP_TYPE;
+typedef std::map<std::string, std::string> U2SN_MAP_TYPE;
 
 bool isThereDeviceWithSerial(std::string const& sn, std::string& dev) {
     // TODO: implement this function
@@ -62,14 +67,85 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         return PAM_CRED_INSUFFICIENT;
     }
 
+    std::set<std::string> usbPartitions;
+    DIR* devDir;
+    if ((devDir = opendir("/dev/")) != 0) {
+        dirent* devDirEntry;
+        while ((devDirEntry = readdir(devDir)) != 0) {
+            std::string fileName = std::string("/dev/") + devDirEntry->d_name;
+            if (fileName.length() > dev.length() && fileName.substr(0, dev.length()) == dev) {
+                usbPartitions.insert(fileName);
+            }
+        }
+        closedir(devDir);
+    } else {
+        printErrorToCErrAndPamSyslog(pamh, "Error while trying to access '/dev' directory");
+        return PAM_AUTHINFO_UNAVAIL;
+    }
+
+    if (usbPartitions.size() == 0) {
+        usbPartitions.insert(dev);
+    }
+
+    bool keyFileFound = false;
+
+    std::ifstream mtab("/etc/mtab");
+    if (!mtab.good()) {
+        printErrorToCErrAndPamSyslog(pamh, "Could not open '/etc/mtab', maybe it does not exist");
+        return PAM_AUTHINFO_UNAVAIL;
+    }
+    while (mtab.good()) {
+        std::string mtabLine, mtabDev, mtabMountPoint;
+        getline(mtab, mtabLine);
+        std::istringstream mtabLineISS(mtabLine);
+        mtabLineISS >> mtabDev >> mtabMountPoint;
+        if (usbPartitions.find(mtabDev) != usbPartitions.end()) {
+            usbPartitions.erase(mtabDev);
+            std::string keyFileName = mtabMountPoint + "/ptfa.key";
+            if (std::ifstream(keyFileName.c_str()) != 0) {
+                // TODO: read the key file
+
+                keyFileFound = true;
+                break;
+            }
+        }
+    }
+    mtab.close();
+
+    if (!keyFileFound) {
+        for (std::set<std::string>::const_iterator it = usbPartitions.begin(); it != usbPartitions.end(); ++it) {
+            system("umount /tmp/ptfa_temporary_mount_point 2> /dev/null");
+            system("rm -rf /tmp/ptfa_temporary_mount_point");
+
+            system("mkdir /tmp/ptfa_temporary_mount_point");
+            std::string mountCmd = "mount " + *it + " /tmp/ptfa_temporary_mount_point";
+            int mountRes = system(mountCmd.c_str());
+            if (mountRes != 0)
+                continue;
+
+            if (std::ifstream("/tmp/ptfa_temporary_mount_point/ptfa.key") != 0) {
+                // TODO: read the key file
+
+                keyFileFound = true;
+            }
+            system("umount /tmp/ptfa_temporary_mount_point");
+            if (keyFileFound) {
+                break;
+            }
+        }
+
+        system("rm -rf /tmp/ptfa_temporary_mount_point");
+    }
+
+    if (!keyFileFound) {
+        printErrorToCErrAndPamSyslog(pamh, "No 'ptfa.key' file found on any accessible partition of '" + dev + "'");
+        return PAM_CRED_INSUFFICIENT;
+    }
+
     /**
       TODO:
        - get user's password (or ask for it if it is not saved);
-       - get all partitions' names of 'dev';
-       - check which of them are mounted
-       - check for file 'ptfa.key' on all mounted partitions, if exists on any, than skip next step;
-       - mount to /tmp/... all other partitions and check for file 'ptfa.key' on them; unmount them;
-       - if 'ptfa.key' was found anywhere, than decrypt it using password;
+       - decrypt key using password;
        - if decryption in previous step fails, than ask for password again until decryption is done successfully or number of tries is exceeded;
        - set PAM's password value to decrypted key's value;
        - return PAM_SUCCESS.
