@@ -3,6 +3,7 @@
 #include <syslog.h>
 #include <security/pam_ext.h>
 
+#include <iostream>
 #include <fstream>
 #include <boost/unordered_map.hpp>
 
@@ -27,30 +28,39 @@ bool loadUserToSNMap(U2SN_MAP_TYPE& u2sn) {
     return true;
 }
 
+void printErrorToCErrAndPamSyslog(pam_handle_t* pamh, std::string const& errMsg) {
+    std::cerr << "pam_twofactor_auth: " << errMsg << std::endl;
+    pam_syslog(pamh, LOG_ERR, "%s", errMsg.c_str());
+}
+
 int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** argv) {
+    //return PAM_SUCCESS;
+
+    // TODO: maybe wait for any UDB device to be connected here?
+
     const char* user;
     int res = pam_get_user(pamh, &user, 0);
     if (res != PAM_SUCCESS) {
-        pam_syslog(pamh, LOG_ERR, "pam_get_user() failed: %s", pam_strerror(pamh, res));
+        printErrorToCErrAndPamSyslog(pamh, std::string("pam_get_user() failed: ") + pam_strerror(pamh, res));
         return PAM_USER_UNKNOWN;
     }
 
     U2SN_MAP_TYPE u2sn;
     if (!loadUserToSNMap(u2sn)) {
-        pam_syslog(pamh, LOG_ERR, "load user-to-serial-number map failed");
+        printErrorToCErrAndPamSyslog(pamh, "Load of user-to-serial-number map failed");
         return PAM_AUTHINFO_UNAVAIL;
     }
 
     U2SN_MAP_TYPE::const_iterator it = u2sn.find(user);
     if (it == u2sn.end()) {
-        pam_syslog(pamh, LOG_ERR, "no user '%s' in user-to-serial-number map", user);
+        printErrorToCErrAndPamSyslog(pamh, std::string("No user '") + user + "' in user-to-serial-number map");
         return PAM_USER_UNKNOWN;
     }
 
     std::string sn = it->second;
     std::string dev;
     if (!isThereDeviceWithSerial(sn, dev)) {
-        pam_syslog(pamh, LOG_ERR, "no device with serial number '%s' is connected", sn.c_str());
+        printErrorToCErrAndPamSyslog(pamh, "No device with serial number '" + sn + "' is connected");
         return PAM_CRED_INSUFFICIENT;
     }
 
