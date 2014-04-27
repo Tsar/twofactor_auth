@@ -34,7 +34,7 @@ void printErrorToCErrAndPamSyslog(pam_handle_t* pamh, std::string const& errMsg)
 }
 
 int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** argv) {
-    return PAM_SUCCESS;
+    //return PAM_SUCCESS;
 
     const char* user;
     int res = pam_get_user(pamh, &user, 0);
