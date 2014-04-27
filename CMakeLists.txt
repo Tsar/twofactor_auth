@@ -10,3 +10,4 @@ pam_twofactor_auth.h
 )
 
 add_library(pam_twofactor_auth SHARED ${sources} ${headers})
+set_target_properties(pam_twofactor_auth PROPERTIES PREFIX "")
