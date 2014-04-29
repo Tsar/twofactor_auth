@@ -12,6 +12,8 @@
 #include <set>
 #include <map>
 
+namespace {
+
 typedef std::map<std::string, std::string> U2SN_MAP_TYPE;
 
 bool startsWith(const std::string& str, const std::string& tmpl) {
@@ -103,6 +105,8 @@ bool pamConvConv1(pam_handle_t* pamh, int msgStyle, std::string const& message, 
 
 bool askForPassword(pam_handle_t* pamh, std::string& password) {
     return pamConvConv1(pamh, PAM_PROMPT_ECHO_OFF, "Password for 'ptfa.key': ", &password);
+}
+
 }
 
 int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** argv) {
@@ -218,7 +222,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
        - if decryption in previous step fails, than ask for password again until decryption is done successfully or number of tries is exceeded;
      */
 
-    // Temporaty line for testing
+    // Temporary line for testing
     std::string decryptedKey = password;
 
     res = pam_set_item(pamh, PAM_AUTHTOK, decryptedKey.c_str());
