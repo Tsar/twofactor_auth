@@ -169,8 +169,8 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
 
     if (!keyFileFound) {
         for (std::set<std::string>::const_iterator it = usbPartitions.begin(); it != usbPartitions.end(); ++it) {
-            system("umount /tmp/ptfa_temporary_mount_point 2> /dev/null");
-            system("rm -rf /tmp/ptfa_temporary_mount_point");
+            if (system("umount /tmp/ptfa_temporary_mount_point 2> /dev/null") == 0)
+                system("rm -rf /tmp/ptfa_temporary_mount_point");
 
             system("mkdir /tmp/ptfa_temporary_mount_point");
             std::string mountCmd = "mount " + *it + " /tmp/ptfa_temporary_mount_point";
@@ -186,8 +186,8 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
             }
         }
 
-        system("umount /tmp/ptfa_temporary_mount_point 2> /dev/null");
-        system("rm -rf /tmp/ptfa_temporary_mount_point");
+        if (system("umount /tmp/ptfa_temporary_mount_point 2> /dev/null") == 0)
+            system("rm -rf /tmp/ptfa_temporary_mount_point");
     }
 
     if (!keyFileFound) {
