@@ -15,12 +15,9 @@
 typedef std::map<std::string, std::string> U2SN_MAP_TYPE;
 
 bool startsWith(const std::string& str, const std::string& tmpl) {
-    for (size_t i = 0; i < tmpl.length(); ++i) {
-        if (i >= str.length() || str[i] != tmpl[i]) {
-            return false;
-        }
-    }
-    return true;
+    if (str.length() < tmpl.length())
+        return false;
+    return str.substr(0, tmpl.length()) == tmpl;
 }
 
 std::string getDeviceBySerialNumber(std::string const& sn) {
@@ -121,7 +118,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
     }
 
     std::string sn = it->second;
-    std::string dev = getDeviceBySerialNumberSerial(sn);
+    std::string dev = getDeviceBySerialNumber(sn);
     if (dev.length() == 0) {
         printErrorToCErrAndPamSyslog(pamh, "No device with serial number '" + sn + "' is connected");
         return PAM_CRED_INSUFFICIENT;
@@ -133,7 +130,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         dirent* devDirEntry;
         while ((devDirEntry = readdir(devDir)) != 0) {
             std::string fileName = std::string("/dev/") + devDirEntry->d_name;
-            if (fileName.length() > dev.length() && fileName.substr(0, dev.length()) == dev) {
+            if (fileName.length() > dev.length() && startsWith(fileName, dev)) {
                 usbPartitions.insert(fileName);
             }
         }
