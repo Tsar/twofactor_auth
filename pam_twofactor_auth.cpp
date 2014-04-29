@@ -15,9 +15,7 @@
 typedef std::map<std::string, std::string> U2SN_MAP_TYPE;
 
 bool startsWith(const std::string& str, const std::string& tmpl) {
-    if (str.length() < tmpl.length())
-        return false;
-    return str.substr(0, tmpl.length()) == tmpl;
+    return str.length() >= tmpl.length() && str.substr(0, tmpl.length()) == tmpl;
 }
 
 std::string getDeviceBySerialNumber(std::string const& sn) {
