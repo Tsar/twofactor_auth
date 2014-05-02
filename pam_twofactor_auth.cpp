@@ -6,10 +6,12 @@
 #include <stdlib.h>
 #include <dirent.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <algorithm>
 #include <set>
 #include <map>
 
@@ -21,17 +23,137 @@ bool startsWith(const std::string& str, const std::string& tmpl) {
     return str.length() >= tmpl.length() && str.substr(0, tmpl.length()) == tmpl;
 }
 
-int getDeviceBySerialNumber(std::string const& sn, std::string& device) {
-    std::string path("/dev/disk/by-id");
-    DIR* dirp = opendir(path.c_str());
+std::string lowercase(std::string const& s) {
+    std::string res = s;
+    std::transform(res.begin(), res.end(), res.begin(), ::tolower);
+    return res;
+}
+
+// Do 'stream.seekg(0, std::ios::end)' before using this function for the first time
+bool getLineFromBack(std::istream& stream, std::string& line) {
+    if (stream.tellg() == 0)
+        return false;
+
+    std::string res;
+    char c = 0;
+    while (stream.tellg() != 0 && c != '\n') {
+        stream.seekg(-1, std::ios::cur);
+        c = stream.peek();
+        if (c != '\n') {
+            res += c;
+        }
+    }
+    std::reverse(res.begin(), res.end());
+    line = res;
+    return true;
+}
+
+int getDeviceBySerialNumber_MSVS30(std::string const& sn, std::string& device) {
+    std::ifstream procBusUsbDevices("/proc/bus/usb/devices");
+    if (!procBusUsbDevices.good())
+        return PAM_AUTHINFO_UNAVAIL;
+
+    bool serialFound = false;
+    std::string s;
+    while (procBusUsbDevices.good()) {
+        getline(procBusUsbDevices, s);
+        if (lowercase(s) == ("s:  serialnumber=" + sn)) {
+            serialFound = true;
+            break;
+        }
+    }
+    procBusUsbDevices.close();
+    if (!serialFound)
+        return PAM_CRED_INSUFFICIENT;
+
+    DIR* dirp = opendir("/proc/scsi");
     if (dirp == 0)
         return PAM_AUTHINFO_UNAVAIL;
 
     dirent* dp;
-    std::string ans = "";
-    while ((dp = readdir(dirp)) != NULL) {
+    serialFound = false;
+    std::string scsi;
+    while ((dp = readdir(dirp)) != 0) {
         std::string str(dp->d_name);
-        if (startsWith(str, "usb") && str.find(sn) != std::string::npos) {
+        if (startsWith(str, "usb-storage-")) {
+            str = "/proc/scsi/" + str;
+            DIR* dirp2 = opendir(str.c_str());
+            if (dirp2 == 0)
+                continue;
+
+            dirent* dp2;
+            while ((dp2 = readdir(dirp2)) != 0) {
+                std::string str2(dp2->d_name);
+                str2 = str + "/" + str2;
+                std::ifstream usbStorageInfo(str2.c_str());
+                if (!usbStorageInfo.good())
+                    continue;
+
+                scsi = "";
+                while (usbStorageInfo.good()) {
+                    getline(usbStorageInfo, s);
+
+                    size_t p1, p2;
+                    if ((p1 = s.find("Host scsi")) != std::string::npos && (p2 = s.find(":")) != std::string::npos)
+                        scsi = s.substr(p1 + 9, p2 - p1 - 9);
+
+                    if (lowercase(s).find("serial number: " + sn) != std::string::npos)
+                        serialFound = true;
+
+                    if (serialFound && scsi.length() > 0)
+                        break;
+                }
+                usbStorageInfo.close();
+            }
+            closedir(dirp2);
+
+            if (serialFound && scsi.length() > 0)
+                break;
+        }
+    }
+    closedir(dirp);
+
+    std::cout << "[[[SCSI: " << scsi << "]]]" << std::endl;
+
+    if (!serialFound || scsi.length() == 0)
+        return PAM_AUTHINFO_UNAVAIL;  // Strange situation: found serial in /proc/bus/usb/devices, but not found in /proc/scsi/usb-storage-*/*
+
+    std::ifstream log("/var/log/messages");
+    if (!log.good())
+        return PAM_AUTHINFO_UNAVAIL;
+
+    bool deviceFound = false;
+
+    // Reading log backwards
+    log.seekg(0, std::ios::end);
+    while (getLineFromBack(log, s)) {
+        int p1, p2;
+        if ((p1 = s.find("Attached scsi removable disk ")) != std::string::npos && (p2 = s.find(" at scsi" + scsi + ", channel 0, id 0, lun 0")) != std::string::npos) {
+            device = "/dev/" + s.substr(p1 + 28, p2 - p1 - 28);
+            std::cout << "[[[DEVICE: " << device << "]]]" << std::endl;
+            deviceFound = true;
+            break;
+        }
+    }
+    log.close();
+
+    if (!deviceFound)
+        return PAM_AUTHINFO_UNAVAIL;
+
+    return PAM_SUCCESS;
+}
+
+int getDeviceBySerialNumber(std::string const& sn, std::string& device) {
+    std::string path("/dev/disk/by-id");
+    DIR* dirp = opendir(path.c_str());
+    if (dirp == 0)
+        return getDeviceBySerialNumber_MSVS30(sn, device);
+
+    dirent* dp;
+    std::string ans = "";
+    while ((dp = readdir(dirp)) != 0) {
+        std::string str(dp->d_name);
+        if (startsWith(str, "usb") && lowercase(str).find(sn) != std::string::npos) {
             char buf[256];
             int len = readlink((path + "/" + str).c_str(), buf, 256);
             buf[len] = 0;
@@ -57,7 +179,7 @@ bool loadUserToSNMap(U2SN_MAP_TYPE& u2sn) {
     std::string u, sn;
     while (f.good()) {
         f >> u >> sn;
-        u2sn.insert(std::make_pair(u, sn));
+        u2sn.insert(std::make_pair(u, lowercase(sn)));
     }
     f.close();
     return true;
@@ -146,7 +268,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         errorMessage(pamh, "No device with serial number '" + sn + "' is connected");
         return PAM_CRED_INSUFFICIENT;
     } else if (res != PAM_SUCCESS) {
-        errorMessage(pamh, "Kernel is incompatible with pam_twofactor_auth module ('/dev/disk/by-id' directory should be present)");
+        errorMessage(pamh, "Kernel is incompatible with pam_twofactor_auth module");
         return PAM_AUTHINFO_UNAVAIL;
     }
 
