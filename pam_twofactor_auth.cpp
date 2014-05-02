@@ -1,10 +1,11 @@
 #include "pam_twofactor_auth.h"
 
 #include <syslog.h>
-#include <security/pam_ext.h>
+//#include <security/pam_ext.h>
 
 #include <stdlib.h>
 #include <dirent.h>
+#include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -20,9 +21,12 @@ bool startsWith(const std::string& str, const std::string& tmpl) {
     return str.length() >= tmpl.length() && str.substr(0, tmpl.length()) == tmpl;
 }
 
-std::string getDeviceBySerialNumber(std::string const& sn) {
+int getDeviceBySerialNumber(std::string const& sn, std::string& device) {
     std::string path("/dev/disk/by-id");
     DIR* dirp = opendir(path.c_str());
+    if (dirp == 0)
+        return PAM_AUTHINFO_UNAVAIL;
+
     dirent* dp;
     std::string ans = "";
     while ((dp = readdir(dirp)) != NULL) {
@@ -39,7 +43,11 @@ std::string getDeviceBySerialNumber(std::string const& sn) {
         }
     }
     closedir(dirp);
-    return ans;
+    if (ans.length() == 0)
+        return PAM_CRED_INSUFFICIENT;
+
+    device = ans;
+    return PAM_SUCCESS;
 }
 
 bool loadUserToSNMap(U2SN_MAP_TYPE& u2sn) {
@@ -58,7 +66,7 @@ bool loadUserToSNMap(U2SN_MAP_TYPE& u2sn) {
 bool pamConvConv1(pam_handle_t* pamh, int msgStyle, std::string const& message, std::string* response);
 
 void errorMessage(pam_handle_t* pamh, std::string const& errMsg, bool toPAMConv = true) {
-    pam_syslog(pamh, LOG_ERR, "%s", errMsg.c_str());
+    //pam_syslog(pamh, LOG_ERR, "%s", errMsg.c_str());
     if (toPAMConv) {
         pamConvConv1(pamh, PAM_ERROR_MSG, "ptfa: " + errMsg, 0);
     } else {
@@ -132,10 +140,14 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
     }
 
     std::string sn = it->second;
-    std::string dev = getDeviceBySerialNumber(sn);
-    if (dev.length() == 0) {
+    std::string dev;
+    res = getDeviceBySerialNumber(sn, dev);
+    if (res == PAM_CRED_INSUFFICIENT) {
         errorMessage(pamh, "No device with serial number '" + sn + "' is connected");
         return PAM_CRED_INSUFFICIENT;
+    } else if (res != PAM_SUCCESS) {
+        errorMessage(pamh, "Kernel is incompatible with pam_twofactor_auth module ('/dev/disk/by-id' directory should be present)");
+        return PAM_AUTHINFO_UNAVAIL;
     }
 
     std::set<std::string> usbPartitions;
