@@ -113,8 +113,6 @@ int getDeviceBySerialNumber_MSVS30(std::string const& sn, std::string& device) {
     }
     closedir(dirp);
 
-    std::cout << "[[[SCSI: " << scsi << "]]]" << std::endl;
-
     if (!serialFound || scsi.length() == 0)
         return PAM_AUTHINFO_UNAVAIL;  // Strange situation: found serial in /proc/bus/usb/devices, but not found in /proc/scsi/usb-storage-*/*
 
@@ -130,7 +128,6 @@ int getDeviceBySerialNumber_MSVS30(std::string const& sn, std::string& device) {
         int p1, p2;
         if ((p1 = s.find("Attached scsi removable disk ")) != std::string::npos && (p2 = s.find(" at scsi" + scsi + ", channel 0, id 0, lun 0")) != std::string::npos) {
             device = "/dev/" + s.substr(p1 + 29, p2 - p1 - 29);
-            std::cout << "[[[DEVICE: " << device << "]]]" << std::endl;
             deviceFound = true;
             break;
         }
@@ -322,7 +319,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
             if (system("umount /tmp/ptfa_temporary_mount_point 2> /dev/null") == 0)
                 system("rm -rf /tmp/ptfa_temporary_mount_point");
 
-            system("mkdir /tmp/ptfa_temporary_mount_point");
+            system("mkdir -p /tmp/ptfa_temporary_mount_point");
             std::string mountCmd = "mount " + *it + " /tmp/ptfa_temporary_mount_point";
             int mountRes = system(mountCmd.c_str());
             if (mountRes != 0)
