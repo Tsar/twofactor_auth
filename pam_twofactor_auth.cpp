@@ -129,7 +129,7 @@ int getDeviceBySerialNumber_MSVS30(std::string const& sn, std::string& device) {
     while (getLineFromBack(log, s)) {
         int p1, p2;
         if ((p1 = s.find("Attached scsi removable disk ")) != std::string::npos && (p2 = s.find(" at scsi" + scsi + ", channel 0, id 0, lun 0")) != std::string::npos) {
-            device = "/dev/" + s.substr(p1 + 28, p2 - p1 - 28);
+            device = "/dev/" + s.substr(p1 + 29, p2 - p1 - 29);
             std::cout << "[[[DEVICE: " << device << "]]]" << std::endl;
             deviceFound = true;
             break;
