@@ -176,7 +176,7 @@ bool loadUserToSNMap(U2SN_MAP_TYPE& u2sn) {
     std::string u, sn;
     while (f.good()) {
         f >> u >> sn;
-        u2sn.insert(std::make_pair(u, lowercase(sn)));
+        u2sn.insert(std::make_pair(u, sn));
     }
     f.close();
     return true;
@@ -260,7 +260,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
 
     std::string sn = it->second;
     std::string dev;
-    res = getDeviceBySerialNumber(sn, dev);
+    res = getDeviceBySerialNumber(lowercase(sn), dev);
     if (res == PAM_CRED_INSUFFICIENT) {
         errorMessage(pamh, "No device with serial number '" + sn + "' is connected");
         return PAM_CRED_INSUFFICIENT;
