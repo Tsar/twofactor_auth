@@ -275,7 +275,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         dirent* devDirEntry;
         while ((devDirEntry = readdir(devDir)) != 0) {
             std::string fileName = std::string("/dev/") + devDirEntry->d_name;
-            if (fileName.length() > dev.length() && startsWith(fileName, dev)) {
+            if (fileName.length() > dev.length() && startsWith(fileName, dev) && fileName[dev.length()] >= '0' && fileName[dev.length()] <= '9') {
                 usbPartitions.insert(fileName);
             }
         }
