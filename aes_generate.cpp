@@ -85,7 +85,7 @@ unsigned char* base64_decode(const unsigned char* input, int length) {
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
-        printf("passphrase is expected");
+        printf("passphrase is expected\n");
         return 1;
     }
     srand((unsigned int) time(NULL));
