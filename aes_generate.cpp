@@ -12,55 +12,51 @@
 #include <time.h>
 #include <string.h>
 
-void print_hex(const unsigned char* p) {
-    for(int i = 0; *(p + i) != 0x00; i++) {
-        printf("%X ", *(p + i));
-    }
-}
+#include <string>
 
-void print_str(const unsigned char* p) {
-    for(int i = 0; *(p + i) != 0x00; i++) {
-        printf("%c", *(p + i));
-    }
-}
+using std::string;
+typedef std::basic_string<unsigned char> ustring;
 
-unsigned char* generate_random_sequence(int n) {
-    unsigned char* seq = new unsigned char[n];
+ustring generate_random_sequence(int n) {
+    ustring seq;
     for (int i = 0; i < n; ++i) {
-        seq[i] = (unsigned char) rand();
+        seq += (unsigned char)rand();
     }
     return seq;
 }
 
-unsigned char* aes_encode(const unsigned char* passphrase, const unsigned char* indata, int length) {
+ustring aes_encode(ustring const& passphrase, ustring const& indata, int length) {
     AES_KEY key;
-    AES_set_encrypt_key(passphrase, length, &key);
+    AES_set_encrypt_key(passphrase.c_str(), length, &key);
     unsigned char* outdata = new unsigned char[length];
-    AES_encrypt(indata, outdata, &key);
-    return outdata;
+    AES_encrypt(indata.c_str(), outdata, &key);
+    ustring res(outdata);
+    delete[] outdata;
+    return res;
 }
 
-unsigned char* aes_decode(const unsigned char* passphrase, const unsigned char* indata, int length) {
+ustring aes_decode(ustring const& passphrase, ustring const& indata, int length) {
     AES_KEY key;
-    AES_set_decrypt_key(passphrase, length, &key);
+    AES_set_decrypt_key(passphrase.c_str(), length, &key);
     unsigned char* outdata = new unsigned char[length];
-    AES_decrypt(indata, outdata, &key);
-    return outdata;
+    AES_decrypt(indata.c_str(), outdata, &key);
+    ustring res(outdata);
+    delete[] outdata;
+    return res;
 }
 
-unsigned char* base64_encode(const unsigned char *input, int length) {
+string base64_encode(ustring const& input, int length) {
     BIO* b64 = BIO_new(BIO_f_base64());
     BIO* bmem = BIO_new(BIO_s_mem());
     b64 = BIO_push(b64, bmem);
-    BIO_write(b64, input, length);
+    BIO_write(b64, input.c_str(), length);
     BIO_flush(b64);
 
     BUF_MEM* bptr;
     BIO_get_mem_ptr(b64, &bptr);
 
-    unsigned char *buffer = (unsigned char *) malloc(bptr->length);
-    memcpy(buffer, bptr->data, bptr->length-1);
-    buffer[bptr->length-1] = 0;
+    string buffer(bptr->data, bptr->length);
+    buffer[bptr->length - 1] = 0;
 
     BIO_free_all(b64);
 
@@ -68,19 +64,22 @@ unsigned char* base64_encode(const unsigned char *input, int length) {
 }
 
 
-unsigned char* base64_decode(const unsigned char* input, int length) {
-    unsigned char *buffer = (unsigned char *)malloc(length);
-    memset(buffer, 0, length);
+ustring base64_decode(string const& input, int length) {
+    unsigned char *buffer = new unsigned char[length];
+    //memset(buffer, 0, length);  // what for?
 
     BIO* b64 = BIO_new(BIO_f_base64());
-    BIO* bmem = BIO_new_mem_buf((void*) input, length);
+    BIO* bmem = BIO_new_mem_buf((void*)input.c_str(), length);
     bmem = BIO_push(b64, bmem);
 
     BIO_read(bmem, buffer, length);
 
     BIO_free_all(bmem);
 
-    return buffer;
+    ustring res(buffer);
+    delete[] buffer;
+
+    return res;
 }
 
 int main(int argc, char* argv[]) {
@@ -88,30 +87,27 @@ int main(int argc, char* argv[]) {
         printf("passphrase is expected\n");
         return 1;
     }
-    srand((unsigned int) time(NULL));
-    const char* passphrase = argv[1];
+
+    srand(time(0));
+
+    ustring passphrase = (unsigned char*)argv[1];
 
     int key_length = 16;
-    printf("passphrase: %s\n", passphrase);
-    unsigned char* indata = generate_random_sequence(key_length);
+    printf("passphrase: %s\n", passphrase.c_str());
+    ustring indata = generate_random_sequence(key_length);
 
-    printf("original\t:");
-    print_str(base64_encode(indata, key_length));
-    printf("\n");
+    printf("original\t: %s\n", base64_encode(indata, key_length).c_str());
 
-    unsigned char* outdata = aes_encode((unsigned char*)passphrase, indata, 8 * key_length);
-    free(indata);
+    // FIX DECODE
+    printf("original\t: %s\n", base64_encode(base64_decode(base64_encode(indata, key_length), key_length), key_length).c_str());
 
-    printf("encoded \t:");
-    print_str(base64_encode(outdata, key_length));
-    printf("\n");
+    ustring outdata = aes_encode(passphrase, indata, 8 * key_length);
 
-    indata = aes_decode((unsigned char*) passphrase, outdata, 8 * key_length);
+    printf("encoded \t: %s\n", base64_encode(outdata, key_length).c_str());
 
-    printf("decoded \t:");
-    print_str(base64_decode(indata, key_length));
-    printf("\n");
-    free(outdata);
-    free(indata);
+    indata = aes_decode(passphrase, outdata, 8 * key_length);
+
+    printf("decoded \t: %s\n", base64_encode(indata, key_length).c_str());
+
     return 0;
 }
