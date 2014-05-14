@@ -1,3 +1,4 @@
+#ifndef PAM_SM_AUTH
 #define PAM_SM_AUTH
 
 #include <security/pam_appl.h>
@@ -9,3 +10,5 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, cons
 PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags, int argc, const char **argv);
 
 }
+
+#endif

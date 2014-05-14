@@ -15,6 +15,8 @@
 #include <set>
 #include <map>
 
+#include "encoding.h"
+
 namespace {
 
 typedef std::map<std::string, std::string> U2SN_MAP_TYPE;

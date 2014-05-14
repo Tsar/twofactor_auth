@@ -6,10 +6,12 @@ project (pam_twofactor_auth)
 
 set(ptfa_sources
 pam_twofactor_auth.cpp
+encoding.cpp
 )
 
 set(ptfa_headers
 pam_twofactor_auth.h
+encoding.h
 )
 
 add_library(pam_twofactor_auth SHARED ${ptfa_sources} ${ptfa_headers})
