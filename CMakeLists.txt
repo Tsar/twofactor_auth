@@ -22,7 +22,12 @@ set_target_properties(pam_twofactor_auth PROPERTIES PREFIX "")
 
 set(aesgen_sources
 aes_generate.cpp
+encoding.cpp
 )
 
-add_executable(aes_generate ${aesgen_sources})
+set(aesgen_headers
+encoding.h
+)
+
+add_executable(aes_generate ${aesgen_sources} ${aesgen_headers})
 target_link_libraries(aes_generate crypto)

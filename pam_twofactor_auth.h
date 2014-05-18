@@ -1,4 +1,6 @@
-#ifndef PAM_SM_AUTH
+#ifndef PAM_TWOFACTOR_AUTH
+#define PAM_TWOFACTOR_AUTH
+
 #define PAM_SM_AUTH
 
 #include <security/pam_appl.h>
