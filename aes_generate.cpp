@@ -6,10 +6,13 @@
 
 #include <stdio.h>
 #include <time.h>
+#include <iostream>
 
 #include "encoding.h"
 
 using namespace encoding;
+
+/** CODE FOR TESTING ENCRYPTION/DECRYPTION FUNCTIONS
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -42,6 +45,44 @@ int main(int argc, char* argv[]) {
         printf("Sieg\n");
     } else {
         printf("Fail\n");
+    }
+
+    return 0;
+}
+
+*/
+
+int main() {
+    srand(time(0));
+
+    sstring passphrase;
+    std::cout << "Input passphrase: ";
+    std::cin >> passphrase;
+    std::cout << std::endl << "Passphrase: " << passphrase << std::endl;
+
+    ustring key = generate_random_sequence(16);
+    std::cout << "Set as password for 'pam_unix': " << base64_encode(key, 16);
+
+    ustring encryptedKey = aes_encode(passphrase, key, 16);
+    ustring md5PlusEncKey = md5_hash(passphrase, key) + encryptedKey;
+    sstring keyFileContents = base64_encode(md5PlusEncKey, 32);
+    std::cout << "Put to 'ptfa.key' file:         " << keyFileContents;
+
+
+    /// CHECKING THAT EVERYTHING WORKS FINE
+    ustring kfBin = base64_decode(keyFileContents, 32);
+    if (kfBin != md5PlusEncKey) {
+        std::cerr << "ERROR: base64_decode(base64_encode(something)) != something" << std::endl;
+        return 1;
+    }
+    ustring decryptedKey = aes_decode(passphrase, kfBin.substr(16, 16), 16);
+    if (key != decryptedKey) {
+        std::cerr << "ERROR: generated key != decrypted key" << std::endl;
+        return 2;
+    }
+    if (!encoding::check_passphrase(kfBin.substr(0, 16), passphrase, decryptedKey)) {
+        std::cerr << "ERROR: passphrase check failed" << std::endl;
+        return 3;
     }
 
     return 0;

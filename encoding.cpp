@@ -8,6 +8,10 @@
 
 namespace encoding {
 
+    ustring sstring2ustring(sstring const& s) {
+        return ustring((unsigned char*)s.c_str(), s.length());
+    }
+
     ustring generate_random_sequence(int n) {
         ustring seq(n, 0);
         for (int i = 0; i < n; ++i) {
@@ -26,6 +30,10 @@ namespace encoding {
         return ustring(md5digest, MD5_DIGEST_LENGTH);
     }
 
+    ustring md5_hash(sstring const& passphrase, ustring const& indata) {
+        return md5_hash(sstring2ustring(passphrase), indata);
+    }
+
     ustring aes_encode(ustring const& passphrase, ustring const& indata, int length) {
         AES_KEY key;
         AES_set_encrypt_key(passphrase.c_str(), 8 * length, &key);
@@ -34,6 +42,10 @@ namespace encoding {
         ustring res(outdata, 8 * length);
         delete[] outdata;
         return res;
+    }
+
+    ustring aes_encode(sstring const& passphrase, ustring const& indata, int length) {
+        return aes_encode(sstring2ustring(passphrase), indata, length);
     }
 
     ustring aes_decode(ustring const& passphrase, ustring const& indata, int length) {
@@ -46,10 +58,18 @@ namespace encoding {
         return res;
     }
 
+    ustring aes_decode(sstring const& passphrase, ustring const& indata, int length) {
+        return aes_decode(sstring2ustring(passphrase), indata, length);
+    }
+
     bool check_passphrase(ustring const& correct_hash, ustring const& passphrase, ustring const& indata) {
         //print(correct_hash);
         //print(md5_hash(passphrase, indata));
         return correct_hash == md5_hash(passphrase, indata);
+    }
+
+    bool check_passphrase(ustring const& correct_hash, sstring const& passphrase, ustring const& indata) {
+        return check_passphrase(correct_hash, sstring2ustring(passphrase), indata);
     }
 
     sstring base64_encode(ustring const& input, int length) {
@@ -68,7 +88,6 @@ namespace encoding {
 
         return buffer;
     }
-
 
     ustring base64_decode(sstring const& input, int length) {
         unsigned char *buffer = new unsigned char[length];

@@ -17,12 +17,18 @@
 
 #include "encoding.h"
 
+#define MAX_PASSPHRASE_INPUT_TRIES_COUNT 5
+
 namespace {
 
 typedef std::map<std::string, std::string> U2SN_MAP_TYPE;
 
 bool startsWith(const std::string& str, const std::string& tmpl) {
     return str.length() >= tmpl.length() && str.substr(0, tmpl.length()) == tmpl;
+}
+
+bool fileExists(std::string const& fileName) {
+    return std::ifstream(fileName.c_str()) != 0;
 }
 
 std::string lowercase(std::string const& s) {
@@ -52,7 +58,7 @@ bool getLineFromBack(std::istream& stream, std::string& line) {
 
 int getDeviceBySerialNumber_MSVS30(std::string const& sn, std::string& device) {
     std::ifstream procBusUsbDevices("/proc/bus/usb/devices");
-    if (!procBusUsbDevices.good())
+    if (procBusUsbDevices == 0 || !procBusUsbDevices.good())
         return PAM_AUTHINFO_UNAVAIL;
 
     bool serialFound = false;
@@ -88,7 +94,7 @@ int getDeviceBySerialNumber_MSVS30(std::string const& sn, std::string& device) {
                 std::string str2(dp2->d_name);
                 str2 = str + "/" + str2;
                 std::ifstream usbStorageInfo(str2.c_str());
-                if (!usbStorageInfo.good())
+                if (usbStorageInfo == 0 || !usbStorageInfo.good())
                     continue;
 
                 scsi = "";
@@ -119,7 +125,7 @@ int getDeviceBySerialNumber_MSVS30(std::string const& sn, std::string& device) {
         return PAM_AUTHINFO_UNAVAIL;  // Strange situation: found serial in /proc/bus/usb/devices, but not found in /proc/scsi/usb-storage-*/*
 
     std::ifstream log("/var/log/messages");
-    if (!log.good())
+    if (log == 0 || !log.good())
         return PAM_AUTHINFO_UNAVAIL;
 
     bool deviceFound = false;
@@ -173,7 +179,7 @@ int getDeviceBySerialNumber(std::string const& sn, std::string& device) {
 
 bool loadUserToSNMap(U2SN_MAP_TYPE& u2sn) {
     std::ifstream f("/etc/u2sn");
-    if (!f.good())
+    if (f == 0 || !f.good())
         return false;
     std::string u, sn;
     while (f.good()) {
@@ -236,6 +242,14 @@ bool askForPassword(pam_handle_t* pamh, std::string& password) {
     return pamConvConv1(pamh, PAM_PROMPT_ECHO_OFF, "Password for 'ptfa.key': ", &password);
 }
 
+std::string readPTFAKeyFile(std::string const& ptfaKeyFileName) {
+    std::ifstream ptfa(ptfaKeyFileName.c_str());
+    std::string res;
+    getline(ptfa, res);
+    ptfa.close();
+    return res;
+}
+
 }
 
 int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** argv) {
@@ -292,9 +306,10 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
     }
 
     bool keyFileFound = false;
+    std::string keyFileContents;
 
     std::ifstream mtab("/etc/mtab");
-    if (!mtab.good()) {
+    if (mtab == 0 || !mtab.good()) {
         errorMessage(pamh, "Could not open '/etc/mtab', maybe it does not exist");
         return PAM_AUTHINFO_UNAVAIL;
     }
@@ -306,9 +321,8 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         if (usbPartitions.find(mtabDev) != usbPartitions.end()) {
             usbPartitions.erase(mtabDev);
             std::string keyFileName = mtabMountPoint + "/ptfa.key";
-            if (std::ifstream(keyFileName.c_str()) != 0) {
-                // TODO: read the key file
-
+            if (fileExists(keyFileName)) {
+                keyFileContents = readPTFAKeyFile(keyFileName);
                 keyFileFound = true;
                 break;
             }
@@ -327,9 +341,8 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
             if (mountRes != 0)
                 continue;
 
-            if (std::ifstream("/tmp/ptfa_temporary_mount_point/ptfa.key") != 0) {
-                // TODO: read the key file
-
+            if (fileExists("/tmp/ptfa_temporary_mount_point/ptfa.key")) {
+                keyFileContents = readPTFAKeyFile("/tmp/ptfa_temporary_mount_point/ptfa.key");
                 keyFileFound = true;
                 break;
             }
@@ -345,20 +358,31 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
     }
 
     std::string password;
-    if (!askForPassword(pamh, password)) {
-        return PAM_AUTHINFO_UNAVAIL;
+    encoding::ustring kfBin = encoding::base64_decode(keyFileContents, 32);
+    size_t triesCount = 0;
+    bool repeatPassphraseRequest;
+    encoding::ustring decryptedKey;
+
+    do {
+        triesCount += 1;
+        if (!askForPassword(pamh, password)) {
+            return PAM_AUTHINFO_UNAVAIL;
+        }
+
+        decryptedKey = encoding::aes_decode(password, kfBin.substr(16, 16), 16);
+        repeatPassphraseRequest = (triesCount < MAX_PASSPHRASE_INPUT_TRIES_COUNT) && !encoding::check_passphrase(kfBin.substr(0, 16), password, decryptedKey);
+        if (repeatPassphraseRequest) {
+            errorMessage(pamh, "Incorrect passphrase");
+        }
+    } while (repeatPassphraseRequest);
+
+    if (triesCount >= MAX_PASSPHRASE_INPUT_TRIES_COUNT) {
+        errorMessage(pamh, "Max tries for entering passphrase exceeded");
+        return PAM_MAXTRIES;
     }
 
-    /**
-      TODO:
-       - decrypt key using password;
-       - if decryption in previous step fails, than ask for password again until decryption is done successfully or number of tries is exceeded;
-     */
-
-    // Temporary line for testing
-    std::string decryptedKey = password;
-
-    res = pam_set_item(pamh, PAM_AUTHTOK, decryptedKey.c_str());
+    std::string decryptedKeyB64 = encoding::base64_encode(decryptedKey, 16);
+    res = pam_set_item(pamh, PAM_AUTHTOK, decryptedKeyB64.c_str());
     if (res != PAM_SUCCESS) {
         errorMessage(pamh, "Failed to set auth token to decrypted key's value");
     }
