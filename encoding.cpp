@@ -37,9 +37,9 @@ namespace encoding {
     ustring aes_encode(ustring const& passphrase, ustring const& indata, int length) {
         AES_KEY key;
         AES_set_encrypt_key(passphrase.c_str(), 8 * length, &key);
-        unsigned char* outdata = new unsigned char[8 * length];
+        unsigned char* outdata = new unsigned char[length];
         AES_encrypt(indata.c_str(), outdata, &key);
-        ustring res(outdata, 8 * length);
+        ustring res(outdata, length);
         delete[] outdata;
         return res;
     }
@@ -51,7 +51,7 @@ namespace encoding {
     ustring aes_decode(ustring const& passphrase, ustring const& indata, int length) {
         AES_KEY key;
         AES_set_decrypt_key(passphrase.c_str(), 8 * length, &key);
-        unsigned char* outdata = new unsigned char[8 * length];
+        unsigned char* outdata = new unsigned char[length];
         AES_decrypt(indata.c_str(), outdata, &key);
         ustring res(outdata, length);
         delete[] outdata;
@@ -63,8 +63,6 @@ namespace encoding {
     }
 
     bool check_passphrase(ustring const& correct_hash, ustring const& passphrase, ustring const& indata) {
-        //print(correct_hash);
-        //print(md5_hash(passphrase, indata));
         return correct_hash == md5_hash(passphrase, indata);
     }
 
@@ -82,25 +80,36 @@ namespace encoding {
         BUF_MEM* bptr;
         BIO_get_mem_ptr(b64, &bptr);
 
-        sstring buffer(bptr->data, bptr->length);
+        sstring buffer(bptr->data, bptr->length - 1);
 
         BIO_free_all(b64);
 
         return buffer;
     }
 
-    ustring base64_decode(sstring const& input, int length) {
-        unsigned char *buffer = new unsigned char[length];
+    static int base64_decode_length(sstring const& input) {
+        int padding = 0;
+        if (input[input.length() - 1] == '=') {
+            ++padding;
+        }
+        if (input[input.length() - 2] == '=') {
+            ++padding;
+        }
+        return (input.length() * 6 - 8 * padding) / 8;
+    }
 
+    ustring base64_decode(sstring const& input, int length) {
         BIO* b64 = BIO_new(BIO_f_base64());
-        BIO* bmem = BIO_new_mem_buf((void*)input.c_str(), length);
+        sstring str = input + "\n";
+        BIO* bmem = BIO_new_mem_buf((void*) str.c_str(), length + 1);
         bmem = BIO_push(b64, bmem);
 
+        unsigned char *buffer = new unsigned char[length];
         BIO_read(bmem, buffer, length);
 
         BIO_free_all(bmem);
 
-        ustring res(buffer, length);
+        ustring res(buffer, base64_decode_length(input));
         delete[] buffer;
 
         return res;

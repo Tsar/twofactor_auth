@@ -52,6 +52,13 @@ int main(int argc, char* argv[]) {
 
 */
 
+void print(const ustring& str) {
+    for (size_t i = 0; i < str.length(); ++i) {
+        printf("0x%02x ", str[i]);
+    }
+    printf("\n");
+}
+
 int main() {
     srand(time(0));
 
@@ -60,27 +67,29 @@ int main() {
     std::cin >> passphrase;
     std::cout << std::endl << "Passphrase: " << passphrase << std::endl;
 
-    ustring key = generate_random_sequence(16);
-    std::cout << "Set as password for 'pam_unix': " << base64_encode(key, 16);
+    const int key_length = 16;
+    const int md5_length = 16;
+    ustring key = generate_random_sequence(key_length);
+    std::cout << "Set as password for 'pam_unix':\t" << base64_encode(key, key_length) << std::endl;
 
-    ustring encryptedKey = aes_encode(passphrase, key, 16);
+    ustring encryptedKey = aes_encode(passphrase, key, key_length);
     ustring md5PlusEncKey = md5_hash(passphrase, key) + encryptedKey;
-    sstring keyFileContents = base64_encode(md5PlusEncKey, 32);
-    std::cout << "Put to 'ptfa.key' file:         " << keyFileContents;
+    sstring keyFileContents = base64_encode(md5PlusEncKey, md5PlusEncKey.length());
+    std::cout << "Put to 'ptfa.key' file:\t\t" << keyFileContents << std::endl;
 
 
     /// CHECKING THAT EVERYTHING WORKS FINE
-    ustring kfBin = base64_decode(keyFileContents, 32);
+    ustring kfBin = base64_decode(keyFileContents, keyFileContents.length());
     if (kfBin != md5PlusEncKey) {
         std::cerr << "ERROR: base64_decode(base64_encode(something)) != something" << std::endl;
         return 1;
     }
-    ustring decryptedKey = aes_decode(passphrase, kfBin.substr(16, 16), 16);
+    ustring decryptedKey = aes_decode(passphrase, kfBin.substr(md5_length, key_length), key_length);
     if (key != decryptedKey) {
         std::cerr << "ERROR: generated key != decrypted key" << std::endl;
         return 2;
     }
-    if (!encoding::check_passphrase(kfBin.substr(0, 16), passphrase, decryptedKey)) {
+    if (!encoding::check_passphrase(kfBin.substr(0, md5_length), passphrase, decryptedKey)) {
         std::cerr << "ERROR: passphrase check failed" << std::endl;
         return 3;
     }
