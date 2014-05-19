@@ -15,6 +15,7 @@ encoding.h
 )
 
 add_library(pam_twofactor_auth SHARED ${ptfa_sources} ${ptfa_headers})
+target_link_libraries(pam_twofactor_auth crypto)
 set_target_properties(pam_twofactor_auth PROPERTIES PREFIX "")
 
 
