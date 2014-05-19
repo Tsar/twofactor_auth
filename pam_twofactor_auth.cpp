@@ -358,7 +358,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
     }
 
     std::string password;
-    encoding::ustring kfBin = encoding::base64_decode(keyFileContents, 32);
+    encoding::ustring kfBin = encoding::base64_decode(keyFileContents);
     size_t triesCount = 0;
     bool repeatPassphraseRequest;
     encoding::ustring decryptedKey;
@@ -381,7 +381,7 @@ int pam_sm_authenticate(pam_handle_t* pamh, int flags, int argc, const char** ar
         return PAM_MAXTRIES;
     }
 
-    std::string decryptedKeyB64 = encoding::base64_encode(decryptedKey, 16);
+    std::string decryptedKeyB64 = encoding::base64_encode(decryptedKey);
     res = pam_set_item(pamh, PAM_AUTHTOK, decryptedKeyB64.c_str());
     if (res != PAM_SUCCESS) {
         errorMessage(pamh, "Failed to set auth token to decrypted key's value");

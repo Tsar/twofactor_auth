@@ -70,11 +70,11 @@ namespace encoding {
         return check_passphrase(correct_hash, sstring2ustring(passphrase), indata);
     }
 
-    sstring base64_encode(ustring const& input, int length) {
+    sstring base64_encode(ustring const& input) {
         BIO* b64 = BIO_new(BIO_f_base64());
         BIO* bmem = BIO_new(BIO_s_mem());
         b64 = BIO_push(b64, bmem);
-        BIO_write(b64, input.c_str(), length);
+        BIO_write(b64, input.c_str(), input.length());
         BIO_flush(b64);
 
         BUF_MEM* bptr;
@@ -98,14 +98,14 @@ namespace encoding {
         return (input.length() * 6 - 8 * padding) / 8;
     }
 
-    ustring base64_decode(sstring const& input, int length) {
+    ustring base64_decode(sstring const& input) {
         BIO* b64 = BIO_new(BIO_f_base64());
         sstring str = input + "\n";
-        BIO* bmem = BIO_new_mem_buf((void*) str.c_str(), length + 1);
+        BIO* bmem = BIO_new_mem_buf((void*) str.c_str(), str.length());
         bmem = BIO_push(b64, bmem);
 
-        unsigned char *buffer = new unsigned char[length];
-        BIO_read(bmem, buffer, length);
+        unsigned char *buffer = new unsigned char[str.length()];
+        BIO_read(bmem, buffer, str.length());
 
         BIO_free_all(bmem);
 

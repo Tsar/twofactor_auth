@@ -70,16 +70,15 @@ int main() {
     const int key_length = 16;
     const int md5_length = 16;
     ustring key = generate_random_sequence(key_length);
-    std::cout << "Set as password for 'pam_unix':\t" << base64_encode(key, key_length) << std::endl;
+    std::cout << "Set as password for 'pam_unix':\t" << base64_encode(key) << std::endl;
 
     ustring encryptedKey = aes_encode(passphrase, key, key_length);
     ustring md5PlusEncKey = md5_hash(passphrase, key) + encryptedKey;
-    sstring keyFileContents = base64_encode(md5PlusEncKey, md5PlusEncKey.length());
+    sstring keyFileContents = base64_encode(md5PlusEncKey);
     std::cout << "Put to 'ptfa.key' file:\t\t" << keyFileContents << std::endl;
 
-
     /// CHECKING THAT EVERYTHING WORKS FINE
-    ustring kfBin = base64_decode(keyFileContents, keyFileContents.length());
+    ustring kfBin = base64_decode(keyFileContents);
     if (kfBin != md5PlusEncKey) {
         std::cerr << "ERROR: base64_decode(base64_encode(something)) != something" << std::endl;
         return 1;
