@@ -39,12 +39,12 @@ std::string lowercase(std::string const& s) {
 
 // Do 'stream.seekg(0, std::ios::end)' before using this function for the first time
 bool getLineFromBack(std::istream& stream, std::string& line) {
-    if (stream.tellg() == 0)
+    if (static_cast<int>(stream.tellg()) == 0)
         return false;
 
     std::string res;
     char c = 0;
-    while (stream.tellg() != 0 && c != '\n') {
+    while (static_cast<int>(stream.tellg()) != 0 && c != '\n') {
         stream.seekg(-1, std::ios::cur);
         c = stream.peek();
         if (c != '\n') {
