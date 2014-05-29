@@ -9,9 +9,36 @@
 Как уже упоминалось в разделе~\ref{implementation_problems_and_algos}, требуется реализовать функции \t{pam\_sm\_authenticate} и \t{pam\_sm\_setcred}.
 
 \subsection{\t{pam\_sm\_authenticate}}
-Объявление этой функции выглядит следующим образом:
+Функция аутентификации пользователя. Объявление этой функции выглядит следующим образом:
 
 \starttextblock
 PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags,
                                    int argc, const char **argv);
 \end{lstlisting}
+
+Описание параметров функции:
+\begin{itemize}
+\item \t{pamh} --- хэндл PAM;
+\item \t{flags} --- флаги, переданные модулю;
+\item \t{argc}, \t{argv} --- параметры, переданные модулю.
+\end{itemize}
+
+Возвращаемое значение отвечает за успешность аутентификации (это может быть тип ошибки).
+
+Внутри этой функции реализован алгоритм аутентификации, описанный в разделе~\ref{task_statement}.
+
+\subsection{\t{pam\_sm\_setcred}}
+Функция, настраивающая права пользователя после аутентификации. Объявление этой функции выглядит следующим образом:
+
+\starttextblock
+
+PAM_EXTERN int pam_sm_setcred(pam_handle_t *pamh, int flags,
+                              int argc, const char **argv);
+\end{lstlisting}
+
+Внутри этой функции написана заглушка, всегда возвращающая успешный результат, так как настройкой прав пользователя будут заниматься другие модули.
+
+\section{Функции шифрования/дешифрования}
+Было решено сделать удобные обертки над функциями библиотеки \emph{openssl}.
+
+Тут должен писать Андрей.
