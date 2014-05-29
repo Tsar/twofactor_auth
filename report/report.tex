@@ -1,0 +1,208 @@
+% This is an AMS-LaTeX v. 1.2 File.
+
+\documentclass[leqno]{report}
+
+\usepackage{pscyr}
+\renewcommand{\rmdefault}{fjn}
+\renewcommand{\ttdefault}{fcr}
+
+\usepackage[T2A]{fontenc}
+\usepackage[cp1251]{inputenc}
+\usepackage[english,russian]{babel}
+\usepackage{expdlist}
+\usepackage[dvips]{graphicx}
+\usepackage{amsmath}
+
+
+
+\usepackage{amssymb}
+%\usepackage{amsmath}
+\usepackage{amsthm}
+%\usepackage{amsfonts}
+\usepackage{amsxtra} 
+\usepackage{sty/dbl12}
+\usepackage{srcltx}
+\usepackage{epsfig}
+\usepackage{verbatim}
+\usepackage{sty/rac}                        
+\usepackage[russian]{sty/ralg}                       
+
+\usepackage{listings}
+
+\usepackage{textcomp}
+\usepackage{url}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Redefine margins and other page formatting
+
+\setlength{\oddsidemargin}{0.5in}
+
+% Various theorem environments. All of the following have the same numbering
+% system as theorem.
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+\newtheorem{prop}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{question}[theorem]{Question}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{assumption}[theorem]{Assumption}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{notation}[theorem]{Notation}
+\newtheorem{condition}[theorem]{Condition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{introduction}[theorem]{Introduction}
+
+\def\startprog{\begin{lstlisting}[language=C++,basicstyle=\normalsize\ttfamily]}
+\def\starttextblock{\begin{lstlisting}[basicstyle=\normalsize\ttfamily,frame=single,escapeinside={(*}{*)}]}
+\def\startnumberedsmalltextblock{\begin{lstlisting}[basicstyle=\small\ttfamily,frame=single,escapeinside={(*}{*)},numbers=left]}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\include{header}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\numberwithin{theorem}{chapter}        % Numbers theorems "x.y" where x
+                                        % is the section number, y is the
+                                        % theorem number
+
+%\renewcommand{\thetheorem}{\arabic{chapter}.\arabic{theorem}}
+
+%\makeatletter                          % This sequence of commands will
+%\let\c@equation\c@theorem              % incorporate equation numbering
+%\makeatother                           % into the theorem numbering scheme
+
+%\renewcommand{\theenumi}{(\roman{enumi})}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%This command creates a box marked ``To Do'' around text.
+%To use type \todo{  insert text here  }.
+
+\newcommand{\todo}[1]{\vspace{5 mm}\par \noindent
+\marginpar{\textsc{ToDo}}
+\framebox{\begin{minipage}[c]{0.95 \textwidth}
+\tt #1 \end{minipage}}\vspace{5 mm}\par}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\binoppenalty=10000
+\relpenalty=10000
+
+\begin{document}
+
+\bibliographystyle{sty/gost71u_mod}
+
+% Begin the front matter as required by Rackham dissertation guidelines
+
+\initializefrontsections
+
+%\unnumberedpage \copyrightpage{John Doe}
+% Copyright page
+
+\pagestyle{title}
+
+\begin{center}
+\sffamily
+Санкт-Петербургский национальный исследовательский университет\\ информационных технологий, механики и оптики
+
+\vspace{2cm}
+
+Кафедра компьютерных технологий
+
+\vspace{3cm}
+
+{\LARGE Волков Иоанн Русланович\\}
+\vspace{0.2cm}
+{\LARGE Еремеев Андрей Игоревич}
+
+\vspace{3cm}
+
+{\LARGE\bfseries Система строгой аутентификации для ОС МСВС 3.0}
+
+\vspace{5cm}
+
+Курсовая работа 
+
+\vspace{6.5cm}
+
+Санкт-Петербург\\ 2014
+\end{center}
+
+%\newpage
+%\thispagestyle{empty}
+%\mbox{}
+
+\newpage
+
+%\setcounter{page}{3}
+\pagestyle{plain}
+
+%\dedicationpage{Put a dedication here}
+% Dedication page
+
+%\startacknowledgementspage
+% Acknowledgements page
+%{Put Acknowledgements here}
+
+% Table of contents, list of figures, etc.
+\tableofcontents
+%\listoffigures
+
+
+\def\t#1{\texttt{\hbox{#1}}}
+\def\b#1{\textbf{#1}}
+\def\tb#1{\t{\b{#1}}}
+\def\drawfigure#1#2#3{
+        \begin{figure}[H]
+        \centerline{ \includegraphics{#1}}
+        \caption{#2}
+        \label{#3}
+        \end{figure}
+}
+\def\drawfigurex#1#2#3#4#5{
+        \begin{figure}[#1]
+        \centerline{ \includegraphics[#2]{#3}}
+        \caption{#4}
+        \label{#5}
+        \end{figure}
+}
+
+% Chapters
+\startthechapters
+
+%\startprefacepage
+%\input{parts/00_intro.tex}
+
+\input{parts/01_task_description.tex}
+\input{parts/02_functional_arch.tex}
+\input{parts/03_optimal_criteria.tex}
+\input{parts/04_decisions.tex}
+\input{parts/05_proof.tex}
+\input{parts/06_algorithm.tex}
+\input{parts/07_technology.tex}
+\input{parts/08_usage.tex}
+\input{parts/09_testing_method.tex}
+\input{parts/10_results.tex}
+\input{parts/11_program_description.tex}
+
+%\startconclusionpage
+%\input{parts/12_conclusion.tex}
+
+%\startappendices
+%\label{appendix}
+%\input{appendix}
+
+\bibliography{report}   % Use the BibTeX file ``biblio.bib''.
+
+%Abstract Page
+
+\end{document}
