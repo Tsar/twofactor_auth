@@ -1,2 +1,2 @@
 #!/bin/bash
-rm *.aux *.log *.toc *.ps *.dvi *.bbl *.blg *.pdf
+rm *.aux *.log *.toc *.ps *.dvi *.bbl *.blg
