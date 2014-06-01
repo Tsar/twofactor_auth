@@ -2,15 +2,16 @@
 Результатами разработки являются PAM модуль \emph{pam\_twofactor\_auth} и программа \emph{aes\_generate}.
 
 \section{Сборка}
+\label{compilation}
 Для сборки разработанного программного продукта необходимо выполнить следующие шаги:
 \begin{enumerate}
-\item клонировать репозиторий \t{git@github.com:Tsar/pam\_twofactor\_auth.git};
+\item клонировать репозиторий~\cite{repo};
 \item создать директорию для бинарных файлов (далее предполагается, что эта директория называется \t{build} и находится в корне репозитория;
 \item запустить команду \t{ccmake ..};
-\item прописать нужный тип сборки (например, \emph{Debug} или \emph{Release}), сконфигурировать \emph{CMake} и сгенерировать им \emph{Makefile};
+\item прописать нужный тип сборки (например, \emph{Debug} или \emph{Release}), сконфигурировать \emph{CMake} и сгенерировать им \t{Makefile};
 \item запустить команду \t{make}.
 \end{enumerate}
-Если сборка выполнится успешно, то в директории \t{build} будут бинарные файлы \emph{pam\_twofactor\_auth.so} и \emph{aes\_generate}.
+Если сборка выполнится успешно, то в директории \t{build} будут бинарные файлы \t{pam\_twofactor\_auth.so} и \t{aes\_generate}.
 
 \section{Поддержка разных ОС}
 Разработанный продукт поддерживает 2 операционных системы:
