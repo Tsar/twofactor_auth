@@ -65,7 +65,7 @@ symbolic link).
 \end{enumerate}
 
 \section{Алгоритм работы программы \emph{aes\_generate}}
-Приложение \emph{aes\_generate} принимает на вход пароль(\emph{passphrase}) и генерирует на выходе строку вида \emph{md5(<passphrase>+<key>)+aes(<key>)}
+Приложение \emph{aes\_generate} принимает на вход пароль (\emph{passphrase}) и генерирует на выходе строку вида \emph{md5(<passphrase>+<key>)+aes(<key>)}
 в \emph{base64}-формате, где <<+>> — конкатенация строк, \emph{md5} – \emph{md5}-хеш от строки, \emph{aes} — зашифрованный алгоритмом \emph{AES} с помощью
 введенного пароля случайно сгенерированный ключ. Полученная строка сохраняется на USB устройство.
 
